@@ -11,6 +11,8 @@ namespace {
 HWND editor=nullptr,output=nullptr,state=nullptr;
 HWND buttons[4]{};
 HFONT font=nullptr,mono=nullptr;
+HANDLE ownedHostProcess=nullptr; // Only a TestHost launched by this GUI is stopped on close.
+
 std::string utf8(const std::wstring& value) {
  if(value.empty())return {};
  int n=WideCharToMultiByte(CP_UTF8,0,value.data(),static_cast<int>(value.size()),nullptr,0,nullptr,nullptr);
@@ -61,14 +63,63 @@ void arrange(HWND window) {
  MoveWindow(output,m,top+editH+gap,w-2*m,available-editH-gap,TRUE);
  MoveWindow(state,m,h-28,w-2*m,20,TRUE);
 }
+
+// The user opens one app. Its independent host remains a separate process for isolation.
+bool waitForHost() {
+ for(int attempt=0;attempt<50;++attempt) {
+  if(WaitNamedPipeW(lab::PipeName,100))return true;
+  if(ownedHostProcess) {
+   DWORD exitCode=STILL_ACTIVE;
+   if(GetExitCodeProcess(ownedHostProcess,&exitCode)&&exitCode!=STILL_ACTIVE)return false;
+  }
+  Sleep(75);
+ }
+ return false;
+}
+bool ensureHost() {
+ // Reuse an already-running TestHost whenever possible.
+ if(WaitNamedPipeW(lab::PipeName,200))return true;
+ if(ownedHostProcess) {
+  DWORD exitCode=STILL_ACTIVE;
+  if(GetExitCodeProcess(ownedHostProcess,&exitCode)&&exitCode==STILL_ACTIVE)return waitForHost();
+  CloseHandle(ownedHostProcess);
+  ownedHostProcess=nullptr;
+ }
+ wchar_t executable[MAX_PATH]{};
+ DWORD len=GetModuleFileNameW(nullptr,executable,MAX_PATH);
+ if(!len||len>=MAX_PATH)return false;
+ std::filesystem::path folder=std::filesystem::path(executable).parent_path();
+ std::filesystem::path host=folder/L"TestHost.exe";
+ if(!std::filesystem::is_regular_file(host))return false;
+ std::wstring command=L"\""+host.wstring()+L"\"";
+ STARTUPINFOW startup{};
+ startup.cb=sizeof(startup);
+ PROCESS_INFORMATION info{};
+ if(!CreateProcessW(host.c_str(),command.data(),nullptr,nullptr,FALSE,
+     CREATE_NO_WINDOW,nullptr,folder.c_str(),&startup,&info))return false;
+ ownedHostProcess=info.hProcess;
+ CloseHandle(info.hThread);
+ return waitForHost();
+}
+void stopOwnedHost() {
+ if(!ownedHostProcess)return;
+ DWORD code=STILL_ACTIVE;
+ if(GetExitCodeProcess(ownedHostProcess,&code)&&code==STILL_ACTIVE) {
+  TerminateProcess(ownedHostProcess,0);
+  WaitForSingleObject(ownedHostProcess,1000);
+ }
+ CloseHandle(ownedHostProcess);
+ ownedHostProcess=nullptr;
+}
+
 void execute() {
  auto script=utf8(readText(editor));
  if(script.empty()||script.size()>lab::MaxScript) {
   show(L"Bitte 1 bis 131072 Bytes Luau-Code eingeben.");return;
  }
- if(!WaitNamedPipeW(lab::PipeName,1000)) {
-  show(L"TestHost.exe ist nicht gestartet. Bitte zuerst TestHost.exe oeffnen.");
-  SetWindowTextW(state,L"Offline");return;
+ if(!ensureHost()) {
+  show(L"Der automatische Start von TestHost.exe ist fehlgeschlagen. Bitte sicherstellen, dass TestHost.exe und ExecutorCore.dll im gleichen Ordner liegen.");
+  SetWindowTextW(state,L"Host nicht bereit");return;
  }
  HANDLE pipe=CreateFileW(lab::PipeName,GENERIC_READ|GENERIC_WRITE,0,nullptr,OPEN_EXISTING,FILE_ATTRIBUTE_NORMAL,nullptr);
  if(pipe==INVALID_HANDLE_VALUE){show(L"Verbindung fehlgeschlagen.");return;}
@@ -129,10 +180,12 @@ LRESULT CALLBACK windowProc(HWND h,UINT msg,WPARAM w,LPARAM l) {
     L"print(\"Spieler:\", game.Players.LocalPlayer.Name)\r\n"
     L"return Host.greet(\"Entwickler\")",
     ES_MULTILINE|ES_AUTOVSCROLL|ES_WANTRETURN|WS_VSCROLL|WS_HSCROLL|ES_AUTOHSCROLL,WS_EX_CLIENTEDGE,201,mono);
-  output=create(h,L"EDIT",L"Zuerst TestHost.exe starten.",
+  output=create(h,L"EDIT",L"Willkommen! TestHost wird automatisch im Hintergrund gestartet.",
     ES_MULTILINE|ES_READONLY|WS_VSCROLL|ES_AUTOVSCROLL,WS_EX_CLIENTEDGE,202,mono);
-  state=create(h,L"STATIC",L"Bereit | Luau 0.747 | TestHost offline",SS_LEFT,0,203,font);
-  arrange(h);return 0;
+  state=create(h,L"STATIC",L"Luau 0.747 | Backend startet...",SS_LEFT,0,203,font);
+  arrange(h);
+  SetWindowTextW(state,ensureHost()?L"Luau 0.747 | Backend bereit":L"Hoststart fehlgeschlagen - Dateien pruefen");
+  return 0;
  case WM_SIZE:arrange(h);return 0;
  case WM_COMMAND:
   switch(LOWORD(w)){
@@ -144,6 +197,7 @@ LRESULT CALLBACK windowProc(HWND h,UINT msg,WPARAM w,LPARAM l) {
   }
   return 0;
  case WM_DESTROY:
+  stopOwnedHost();
   DeleteObject(font);DeleteObject(mono);PostQuitMessage(0);return 0;
  }
  return DefWindowProcW(h,msg,w,l);

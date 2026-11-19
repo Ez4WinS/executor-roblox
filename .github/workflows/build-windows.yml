@@ -14,14 +14,14 @@ jobs:
       - name: Configure
         run: cmake -S . -B build -G "Visual Studio 17 2022" -A x64
       - name: Build
-        run: cmake --build build --config Release --target ExecutorGUI TestHost CoreTests --parallel 4
+        run: cmake --build build --config Release --target ExecutorLab TestHost CoreTests ProcessTests --parallel 4
       - name: Test
         run: ctest --test-dir build -C Release --output-on-failure
       - name: Package
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path dist/ExecutorLab | Out-Null
-          Copy-Item build/bin/Release/ExecutorGUI.exe dist/ExecutorLab/
+          Copy-Item build/bin/Release/ExecutorLab.exe dist/ExecutorLab/
           Copy-Item build/bin/Release/TestHost.exe dist/ExecutorLab/
           Copy-Item build/bin/Release/ExecutorCore.dll dist/ExecutorLab/
           Copy-Item README.md dist/ExecutorLab/

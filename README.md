@@ -10,9 +10,9 @@ Ein eigenständiges Windows-x64-Projekt mit nativer C++-GUI, lokaler Prozesskomm
 2. Workflow **Build Windows EXE** öffnen.
 3. Den neuesten **grünen** Lauf anklicken.
 4. Unter **Artifacts** die Datei **ExecutorLab-Windows-x64** herunterladen.
-5. ZIP entpacken; `ExecutorGUI.exe`, `TestHost.exe` und `ExecutorCore.dll` im selben Ordner belassen.
+5. ZIP entpacken; `ExecutorLab.exe`, `TestHost.exe` und `ExecutorCore.dll` im selben Ordner belassen.
 
-**Start:** Zuerst `TestHost.exe` starten (Konsolenfenster offen lassen), dann `ExecutorGUI.exe`. Im Editor Luau-Code eingeben und **Ausfuehren** wählen. Bei Bedarf Luau-Skripte über **Oeffnen** und **Speichern** laden/sichern. TestHost mit Strg+C beenden.
+**Start mit einem Doppelklick:** Nur `ExecutorLab.exe` öffnen. Das Programm startet `TestHost.exe` unsichtbar im Hintergrund, lädt indirekt die `ExecutorCore.dll` und beendet den selbst gestarteten TestHost beim Schließen der GUI. Im Editor Luau-Code eingeben und **Ausfuehren** klicken. Die drei Binärdateien müssen trotzdem zusammen im selben Ordner bleiben. Wenn bereits ein kompatibler TestHost läuft, wird dieser wiederverwendet und beim Schließen nicht beendet.
 
 Ein Artefakt wird nur erstellt, wenn der Windows-Build und alle Tests erfolgreich sind. Die Artefakte bleiben in dieser Konfiguration 30 Tage verfügbar.
 
@@ -24,13 +24,7 @@ Windows 10/11 (x64), Visual Studio 2022 mit Desktopentwicklung für C++, CMake u
 cmake -S . -B build -G "Visual Studio 17 2022" -A x64
 cmake --build build --config Release
 ctest --test-dir build -C Release --output-on-failure
-.\build\bin\Release\TestHost.exe
-```
-
-In einem zweiten Terminal:
-
-```powershell
-.\build\bin\Release\ExecutorGUI.exe
+.\build\bin\Release\ExecutorLab.exe
 ```
 
 CMake lädt beim ersten Konfigurieren die offizielle Luau-Version **0.747** herunter.
@@ -38,7 +32,7 @@ CMake lädt beim ersten Konfigurieren die offizielle Luau-Version **0.747** heru
 ## Architekturschema
 
 ```text
-ExecutorGUI.exe (Editor + Konsole)
+ExecutorLab.exe (Editor + Konsole, startet TestHost.exe automatisch)
     |
     | lokale Named Pipe: \\.\pipe\ExecutorLab_v1
     | Request: u32 byteCount, UTF-8 code
@@ -54,6 +48,10 @@ ExecutorCore.dll
     + print, Host.multiply, Host.greet
     + game.Players.LocalPlayer (nur Mock)
 ```
+
+## Warum liegen drei Dateien im ZIP?
+
+**Du musst nur `ExecutorLab.exe` starten.** `TestHost.exe` läuft unsichtbar als separater Prozess und die DLL wird von diesem Host geladen. Die Trennung erlaubt eine anschauliche Demonstration der Prozesskommunikation und hält den Skript-Executor außerhalb des GUI-Prozesses. Eine tatsächlich monolithische einzelne EXE wäre durch statisches Linken möglich, würde aber die eigenständige Prozesskommunikation entfernen. Diese Version ist bewusst eine **Ein-Klick-Anwendung mit drei zusammengehörenden Dateien**.
 
 ## Testskript
 
@@ -72,7 +70,7 @@ return Host.greet("Entwickler")
 - Für jede Ausführung wird eine neue Luau-VM erstellt. Die Luau-Sandbox verhindert den üblichen Zugriff auf Datei- und Betriebssystemfunktionen durch die Beispiel-API.
 - Named Pipe ist lokal und für diesen einfachen TestHost ausgelegt; kein produktionsreifer Sicherheitskanal.
 - Die GUI ist beim kurzen synchronen Skriptlauf zeitweise blockiert.
-- CTest prüft Rückgabewerte, erfolgreiche Skripte, Syntax-/Laufzeitfehler, Timeout und isolierte Zustände.
+- CTest prüft Rückgabewerte, erfolgreiche Skripte, Syntax-/Laufzeitfehler, Timeout und isolierte Zustände. Ein zusätzlicher End-to-End-Test startet den TestHost und prüft die Named-Pipe-Kommunikation samt DLL-Ausführung.
 
 ## Weiterentwicklung
 
