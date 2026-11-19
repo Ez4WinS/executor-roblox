@@ -1,0 +1,24 @@
+name: Export alle Codes und Erklaerungen
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Generate codebook
+        run: python3 docs/make_codebook.py
+      - name: Upload codebook
+        uses: actions/upload-artifact@v4
+        with:
+          name: ExecutorLab-Alle-Codes-Erklaert
+          path: |
+            docs/generated/ALLE_CODES_ERKLAERT.md
+            docs/generated/ALLE_CODES_ERKLAERT.txt
+          retention-days: 90
+          if-no-files-found: error
