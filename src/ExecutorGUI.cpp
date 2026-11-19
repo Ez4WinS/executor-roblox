@@ -50,7 +50,7 @@ HWND create(HWND parent,const wchar_t* cls,const wchar_t* label,DWORD style,DWOR
 }
 void arrange(HWND window) {
  RECT r{};GetClientRect(window,&r);
- int w=std::max(440,r.right),h=std::max(380,r.bottom);
+ int w=std::max(440,static_cast<int>(r.right)),h=std::max(380,static_cast<int>(r.bottom));
  const int m=16,gap=10,btnH=36;
  int bw=(w-2*m-3*gap)/4;
  for(int i=0;i<4;++i)MoveWindow(buttons[i],m+i*(bw+gap),m,bw,btnH,TRUE);
