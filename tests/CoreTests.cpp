@@ -23,7 +23,7 @@ int main() {
  ok &= check("runtime","error('expected error')",2,"expected error");
  ok &= check("timeout","while true do end",2,"timed out");
  ok &= check("sandbox","print(io)",0,"nil");
- ok &= check("fresh_state","assert(_G.custom == nil); _G.custom = 100",0,"[OK]");
- ok &= check("isolated_state","assert(_G.custom == nil)",0,"[OK]");
+ ok &= check("fresh_state","assert(custom == nil); custom = 100",0,"[OK]");
+ ok &= check("isolated_state","assert(custom == nil)",0,"[OK]");
  return ok?0:1;
 }
