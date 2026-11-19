@@ -77,3 +77,10 @@ return Host.greet("Entwickler")
 Für eigene Roblox-Spiele sind autorisierte Server-/Studio-Schnittstellen geeigneter als eine Manipulation des Roblox-Clients. Erweiterungen: asynchrones UI, bessere Zugriffskontrolle der Named Pipe, signierte Release-Binaries und automatisierte IPC-End-to-End-Tests.
 
 Luau ist Open Source: https://github.com/luau-lang/luau
+
+
+## Dark Studio UI (Version 2)
+
+Die Oberfläche verwendet ein dunkles Navy/Purple-Design mit eigener Seitenleiste, abgerundeten Karten, getrenntem Luau-Editor und Ausgabekonsole. Der Editor nutzt Windows RichEdit und hebt Luau-Schlüsselwörter, Strings, Zahlen und Kommentare farbig hervor. Tastenkürzel: **Strg+Enter** ausführen, **Strg+O** öffnen, **Strg+S** speichern. Der separate TestHost wird weiterhin automatisch im Hintergrund gestartet.
+
+**Hinweis:** Es bleibt eine lokale Luau-Testumgebung; es findet keine Injektion in den Roblox-Client statt.
