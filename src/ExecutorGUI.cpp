@@ -54,7 +54,7 @@ Layout layoutOf(HWND window) {
  o.width=c.right; o.height=c.bottom;
  o.left=262; o.right=c.right-26;
  int top=184;
- int available=std::max(410,c.bottom-top-58);
+ int available=std::max(410,static_cast<int>(c.bottom)-top-58);
  int first=std::max(264,available*62/100);
  o.toolbar={o.left,117,o.right,159};
  o.editorCard={o.left,top,o.right,top+first};
